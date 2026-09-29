@@ -1,5 +1,5 @@
 # 縦読みジェネレータ（GEB風あとがきにも対応？）
-
+<img width="1123" height="896" alt="Image" src="https://github.com/user-attachments/assets/db12fa31-9cf9-48fd-95a0-65247e61655c" />
 左右の縦読みを保ちながら、中央の文章を組版するブラウザーアプリです。本文を手入力するほか、OpenAI互換のChat Completions APIに接続して生成・検証できます。
 
 ## 主な機能
