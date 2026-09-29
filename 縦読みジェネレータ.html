@@ -1,0 +1,725 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>あとがきジェネレータ</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #f3f5f2;
+      --surface: #ffffff;
+      --ink: #202722;
+      --muted: #69736c;
+      --line: #d9dfd9;
+      --accent: #b3432e;
+      --accent-dark: #85301f;
+      --soft: #e9eee9;
+      --mono: Consolas, "ＭＳ ゴシック", monospace;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background-color: var(--paper);
+      background-image: linear-gradient(#dfe5df 1px, transparent 1px), linear-gradient(90deg, #dfe5df 1px, transparent 1px);
+      background-size: 28px 28px;
+      font-family: "Yu Gothic UI", "Meiryo", sans-serif;
+    }
+
+    button, input, textarea, select { font: inherit; }
+
+    .shell { width: min(1440px, 100%); margin: 0 auto; padding: 32px clamp(16px, 4vw, 56px) 56px; }
+
+    header {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 24px;
+      margin-bottom: 24px;
+      border-bottom: 1px solid var(--ink);
+      padding-bottom: 16px;
+    }
+
+    .eyebrow { margin: 0 0 7px; color: var(--accent); font-size: 12px; font-weight: 700; }
+    h1 { margin: 0; font-size: clamp(24px, 3vw, 36px); line-height: 1.2; }
+    .header-note { margin: 0; color: var(--muted); font-size: 13px; }
+
+    .workspace { display: grid; grid-template-columns: minmax(300px, 390px) minmax(0, 1fr); gap: 22px; align-items: start; }
+    .controls, .preview { min-width: 0; background: var(--surface); border: 1px solid var(--line); }
+    .controls { padding: 20px; }
+    .preview { position: sticky; top: 16px; overflow: hidden; }
+    .section-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin: 0 0 15px; }
+    h2 { margin: 0; font-size: 16px; }
+    .section-heading span, .hint, .meta { color: var(--muted); font-size: 12px; }
+
+    .field { display: grid; gap: 6px; margin-bottom: 15px; }
+    .field label { font-size: 13px; font-weight: 700; }
+    .field-label-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .check-toggle { display: inline-flex; align-items: center; gap: 5px; color: var(--muted); font-size: 11px; font-weight: 400 !important; white-space: nowrap; }
+    .check-toggle input { width: auto; margin: 0; accent-color: var(--accent); }
+    .field small { color: var(--muted); font-size: 11px; }
+    input, textarea {
+      width: 100%;
+      border: 1px solid #c9d1ca;
+      border-radius: 3px;
+      background: #fff;
+      color: var(--ink);
+      padding: 9px 10px;
+      outline: none;
+    }
+    select {
+      width: 100%;
+      border: 1px solid #c9d1ca;
+      border-radius: 3px;
+      background: #fff;
+      color: var(--ink);
+      padding: 9px 10px;
+      outline: none;
+    }
+    input:focus, textarea:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 2px #b3432e20; }
+    textarea { min-height: 100px; resize: vertical; line-height: 1.6; }
+    #bodyText { min-height: 180px; }
+    .pair { display: grid; grid-template-columns: 1fr 100px; gap: 12px; }
+    .pair.phrase-pair { grid-template-columns: minmax(0, 1fr) 140px; }
+    .api-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .api-grid .field { min-width: 0; }
+    details { border-top: 1px solid var(--line); margin-top: 18px; padding-top: 14px; }
+    summary { cursor: pointer; font-size: 13px; font-weight: 700; }
+    .api-note { margin: 10px 0 0; color: var(--muted); font-size: 11px; line-height: 1.6; }
+
+    .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+    button {
+      min-height: 38px;
+      border: 1px solid var(--ink);
+      border-radius: 3px;
+      background: var(--ink);
+      color: #fff;
+      padding: 8px 12px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 700;
+    }
+    button:hover { background: #38433b; }
+    button:disabled { cursor: wait; opacity: .6; }
+    button.secondary { background: #fff; color: var(--ink); }
+    button.secondary:hover { background: var(--soft); }
+    button.primary { border-color: var(--accent); background: var(--accent); }
+    button.primary:hover { background: var(--accent-dark); }
+    #status { min-height: 18px; margin: 10px 0 0; color: var(--muted); font-size: 12px; }
+    #status.error { color: #a02d23; }
+
+    .preview-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; border-bottom: 1px solid var(--line); padding: 13px 16px; }
+    .preview-bar h2 { font-size: 14px; }
+    .preview-actions { display: flex; gap: 7px; }
+    .preview-actions button { min-height: 32px; padding: 5px 9px; font-size: 12px; }
+    .canvas { overflow: auto; min-height: 360px; padding: 24px; background: #fbfcfa; }
+    #output {
+      width: max-content;
+      min-width: 100%;
+      margin: 0;
+      color: #202722;
+      font-family: var(--mono);
+      font-size: 14px;
+      line-height: 1.75;
+      white-space: pre;
+      tab-size: 2;
+    }
+    #output .vertical { font-weight: 700; }
+    .meta { display: flex; gap: 16px; border-top: 1px solid var(--line); padding: 11px 16px; }
+    .meta strong { color: var(--ink); font-weight: 700; }
+
+    @media (max-width: 850px) {
+      .workspace { grid-template-columns: 1fr; }
+      .preview { position: static; }
+      header { align-items: start; flex-direction: column; gap: 8px; }
+    }
+
+    @media (max-width: 480px) {
+      .shell { padding: 22px 12px 32px; }
+      .controls { padding: 15px; }
+      .pair { grid-template-columns: 1fr 82px; }
+      .pair.phrase-pair { grid-template-columns: minmax(0, 1fr) 120px; }
+      .canvas { padding: 16px 12px; }
+      #output { font-size: 12px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header>
+      <div>
+        <p class="eyebrow">GEB / TEXT GENERATOR</p>
+        <h1>縦読みジェネレータ</h1>
+      </div>
+      <p class="header-note">左右の縦読みを、ひとつの本文でつなぐ。</p>
+    </header>
+
+    <div class="workspace">
+      <section class="controls" aria-label="文章の設定">
+        <div class="section-heading"><h2>縁取り</h2><span>空白・改行は除外</span></div>
+        <div class="pair phrase-pair">
+          <div class="field">
+            <div class="field-label-row">
+              <label for="leftPhrase">左側縦読み</label>
+              <label class="check-toggle"><input id="leftEnabled" type="checkbox" checked>使う</label>
+            </div>
+            <input id="leftPhrase" value="ＧＥＢはスゴイ！" autocomplete="off">
+          </div>
+          <div class="field">
+            <label for="leftDirection">左側の読む向き</label>
+            <select id="leftDirection">
+              <option value="down" selected>上から下</option>
+              <option value="up">下から上（逆方向）</option>
+            </select>
+          </div>
+        </div>
+        <div class="field">
+          <label for="lineWidth">幅（全角文字）</label>
+          <input id="lineWidth" type="number" min="4" max="120" value="36">
+        </div>
+        <div class="pair phrase-pair">
+          <div class="field">
+            <div class="field-label-row">
+              <label for="rightPhrase">右側縦読み</label>
+              <label class="check-toggle"><input id="rightEnabled" type="checkbox" checked>使う</label>
+            </div>
+            <input id="rightPhrase" value="ＧＥＢはスゴイ！" autocomplete="off">
+          </div>
+          <div class="field">
+            <label for="rightDirection">右側の読む向き</label>
+            <select id="rightDirection">
+              <option value="down">上から下</option>
+              <option value="up" selected>下から上（逆方向）</option>
+            </select>
+          </div>
+        </div>
+        <small class="hint">入力した文字列を、選択した向きに読めるよう配置します。</small>
+        <div class="field">
+          <label for="bodyText">中央の本文</label>
+          <textarea id="bodyText" placeholder="本文を入力するか、下の欄からLLMで生成します。"></textarea>
+          <small>全角1文字は1文字分。本文の改行位置は行に反映します。</small>
+        </div>
+
+        <div class="field">
+          <label for="prompt">LLMへの依頼</label>
+          <textarea id="prompt" placeholder="例：GEBの魅力を、驚きと親しみのある調子で語る。" style="min-height:76px">GEBの魅力を、驚きと親しみのある調子で語る。</textarea>
+        </div>
+        <div class="actions">
+          <button id="generateButton" class="primary" type="button">LLMで本文を作る</button>
+          <button id="formatButton" type="button">組版する</button>
+        </div>
+
+        <details>
+          <summary>LLM接続設定</summary>
+          <div class="api-grid" style="margin-top:12px">
+            <div class="field" style="grid-column:1/-1">
+              <label for="apiUrl">API URL</label>
+              <input id="apiUrl" type="url" value="http://localhost:11434/v1/chat/completions">
+            </div>
+            <div class="field">
+              <label for="model">モデル</label>
+              <input id="model" value="gpt-oss:20b" autocomplete="off">
+            </div>
+            <div class="field">
+              <label for="apiKey">APIキー（任意）</label>
+              <input id="apiKey" type="password" autocomplete="off" placeholder="接続先によって不要">
+            </div>
+          </div>
+          <p class="api-note">接続先APIとモデルを利用可能な状態にしてください。APIキーは接続先によって不要です。接続できない場合は、API URL、ネットワーク、CORS設定を確認してください。</p>
+        </details>
+        <p id="status" role="status" aria-live="polite"></p>
+      </section>
+
+      <section class="preview" aria-label="組版プレビュー">
+        <div class="preview-bar">
+          <h2>プレビュー</h2>
+          <div class="preview-actions">
+            <button id="copyButton" class="secondary" type="button" title="組版した文章をコピー">コピー</button>
+            <button id="downloadButton" class="secondary" type="button" title="テキストファイルを保存">.txt保存</button>
+          </div>
+        </div>
+        <div class="canvas"><pre id="output" aria-label="組版結果"></pre></div>
+        <div class="meta">
+          <span>行数 <strong id="rowCount">0</strong></span>
+          <span>幅 <strong id="widthCount">36</strong> 全角文字</span>
+          <span>本文 <strong id="bodyCount">0</strong> 字</span>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <script>
+    const segmenter = new Intl.Segmenter("ja", { granularity: "grapheme" });
+    const wideCharacter = /[\u1100-\u115f\u2329\u232a\u2e80-\ua4cf\uac00-\ud7a3\uf900-\ufaff\ufe10-\ufe19\ufe30-\ufe6f\uff01-\uff60\uffe0-\uffe6\u{1f300}-\u{1faff}\u{20000}-\u{3fffd}]/u;
+    const leftInput = document.querySelector("#leftPhrase");
+    const leftDirectionInput = document.querySelector("#leftDirection");
+    const leftEnabledInput = document.querySelector("#leftEnabled");
+    const rightInput = document.querySelector("#rightPhrase");
+    const rightDirectionInput = document.querySelector("#rightDirection");
+    const rightEnabledInput = document.querySelector("#rightEnabled");
+    const widthInput = document.querySelector("#lineWidth");
+    const bodyInput = document.querySelector("#bodyText");
+    const output = document.querySelector("#output");
+    const status = document.querySelector("#status");
+
+    function graphemes(text) {
+      return Array.from(segmenter.segment(text), part => part.segment);
+    }
+
+    function columns(character) {
+      return [...character].some(part => wideCharacter.test(part) || /\p{Extended_Pictographic}/u.test(part)) ? 2 : 1;
+    }
+
+    function phraseCharacters(text) {
+      return graphemes(text.replace(/[\s\u3000]/gu, ""));
+    }
+
+    function activePhraseCharacters(input, enabledInput) {
+      return enabledInput.checked ? phraseCharacters(input.value) : [];
+    }
+
+    function edgeCharacterAt(characters, direction, row, rowTotal) {
+      const offset = direction === "up" ? row - (rowTotal - characters.length) : row;
+      if (offset < 0 || offset >= characters.length) return "";
+      return direction === "up" ? characters[characters.length - 1 - offset] : characters[offset];
+    }
+
+    function displayedEdgePhrase(characters, direction, rowTotal) {
+      return Array.from({ length: rowTotal }, (_, row) => edgeCharacterAt(characters, direction, row, rowTotal)).filter(Boolean);
+    }
+
+    function bodyRowLimit() {
+      const left = activePhraseCharacters(leftInput, leftEnabledInput);
+      const right = activePhraseCharacters(rightInput, rightEnabledInput);
+      return Math.min(Math.max(1, left.length, right.length), 4);
+    }
+
+    function rightEdgeJoinHint(character) {
+      const hints = {
+        "イ": "本文末尾の「スゴ」「オモシロ」「タノシ」などに続けて、「スゴイ」などの語を完成させる",
+        "ゴ": "本文末尾を「ロ」にして、右端とつないだ「ロゴは」を次行へ続ける",
+        "ス": "本文末尾を「ボーナ」などにして、右端とつないだ「ボーナス」を完成させる"
+      };
+      return hints[character] || "右端文字まで続けて読んだとき自然な語尾にする";
+    }
+
+    function padding(columnsToFill) {
+      return "・".repeat(Math.floor(columnsToFill / 2)) + " ".repeat(columnsToFill % 2);
+    }
+
+    function makeRows(left, right, body, width, leftDirection, rightDirection) {
+      let rowTotal = Math.max(1, left.length, right.length);
+      const rowsLimit = 5000;
+
+      while (rowTotal <= rowsLimit) {
+        let bodyIndex = 0;
+        const rows = [];
+
+        for (let row = 0; row < rowTotal; row += 1) {
+          const leftCharacter = edgeCharacterAt(left, leftDirection, row, rowTotal);
+          const rightCharacter = edgeCharacterAt(right, rightDirection, row, rowTotal);
+          const leftWidth = leftCharacter ? columns(leftCharacter) : 0;
+          const rightWidth = rightCharacter ? columns(rightCharacter) : 0;
+          const available = width - leftWidth - rightWidth;
+          if (available < 0) throw new Error(`${row + 1}行目で左右の文字が幅を超えています。幅を広げてください。`);
+
+          let used = 0;
+          let bodyLine = "";
+          while (bodyIndex < body.length) {
+            const nextWidth = columns(body[bodyIndex]);
+            if (used + nextWidth > available) break;
+            bodyLine += body[bodyIndex];
+            used += nextWidth;
+            bodyIndex += 1;
+          }
+          rows.push({ left: leftCharacter, center: bodyLine + padding(available - used), right: rightCharacter });
+        }
+
+        if (bodyIndex >= body.length) return rows;
+        rowTotal += 1;
+      }
+
+      throw new Error("本文が長すぎます。本文を短くしてください。");
+    }
+
+    function makeLineRows(left, right, bodyLines, width, leftDirection, rightDirection) {
+      const rowTotal = Math.max(1, left.length, right.length, bodyLines.length);
+      const rows = [];
+      for (let row = 0; row < rowTotal; row += 1) {
+        const leftCharacter = edgeCharacterAt(left, leftDirection, row, rowTotal);
+        const rightCharacter = edgeCharacterAt(right, rightDirection, row, rowTotal);
+        const available = width - (leftCharacter ? columns(leftCharacter) : 0) - (rightCharacter ? columns(rightCharacter) : 0);
+        const bodyLine = bodyLines[row] || [];
+        const used = bodyLine.reduce((total, character) => total + columns(character), 0);
+        if (used > available) throw new Error(`${row + 1}行目の本文が幅を超えています。短くして再生成してください。`);
+        rows.push({ left: leftCharacter, center: bodyLine.join("") + padding(available - used), right: rightCharacter });
+      }
+      return rows;
+    }
+
+    function layoutRows(left, right, text, width, leftDirection = leftDirectionInput.value, rightDirection = rightDirectionInput.value) {
+      if (/\r?\n/u.test(text)) {
+        const bodyLines = text.split(/\r?\n/u).map(line => graphemes(line.replace(/[\s\u3000]/gu, "")));
+        return makeLineRows(left, right, bodyLines, width, leftDirection, rightDirection);
+      }
+      return makeRows(left, right, graphemes(text.replace(/[\s\u3000]/gu, "")), width, leftDirection, rightDirection);
+    }
+
+    function format() {
+      const fullwidthWidth = Number(widthInput.value);
+      if (!Number.isInteger(fullwidthWidth) || fullwidthWidth < 4 || fullwidthWidth > 120) {
+        throw new Error("幅は4〜120全角文字で指定してください。");
+      }
+      const left = activePhraseCharacters(leftInput, leftEnabledInput);
+      const right = activePhraseCharacters(rightInput, rightEnabledInput);
+      if (left.length === 0 && right.length === 0) throw new Error("左右どちらかの縦読みを入力してください。");
+
+      const body = graphemes(bodyInput.value.replace(/[\s\u3000]/gu, ""));
+      const rows = layoutRows(left, right, bodyInput.value, fullwidthWidth * 2, leftDirectionInput.value, rightDirectionInput.value);
+      output.replaceChildren();
+      rows.forEach((row, index) => {
+        if (row.left) {
+          const leftSpan = document.createElement("span");
+          leftSpan.className = "vertical";
+          leftSpan.textContent = row.left;
+          output.append(leftSpan);
+        }
+        output.append(document.createTextNode(row.center));
+        if (row.right) {
+          const rightSpan = document.createElement("span");
+          rightSpan.className = "vertical";
+          rightSpan.textContent = row.right;
+          output.append(rightSpan);
+        }
+        if (index < rows.length - 1) output.append(document.createTextNode("\n"));
+      });
+      const formatted = output.textContent;
+      document.querySelector("#rowCount").textContent = String(rows.length);
+      document.querySelector("#widthCount").textContent = String(fullwidthWidth);
+      document.querySelector("#bodyCount").textContent = String(body.length);
+      status.textContent = body.length ? "組版しました。" : "本文を入力すると、縦読みの位置を確認できます。";
+      status.classList.remove("error");
+      return formatted;
+    }
+
+    function setError(error) {
+      status.textContent = error.message;
+      status.classList.add("error");
+    }
+
+    document.querySelector("#formatButton").addEventListener("click", () => {
+      try { format(); } catch (error) { setError(error); }
+    });
+
+    for (const input of [leftInput, leftDirectionInput, leftEnabledInput, rightInput, rightDirectionInput, rightEnabledInput, widthInput, bodyInput]) {
+      input.addEventListener("input", () => {
+        try { format(); } catch (error) { setError(error); }
+      });
+    }
+
+    async function requestOllama(apiUrl, model, apiKey, messages, jsonOutput = false, maxTokens) {
+      const headers = { "Content-Type": "application/json" };
+      if (apiKey) headers.Authorization = `Bearer ${apiKey}`;
+      let finishReason = "不明";
+      for (let attempt = 0; attempt < 2; attempt += 1) {
+        const payload = { model, temperature: 0.3, reasoning_effort: "low", stream: false, messages };
+        if (jsonOutput) payload.response_format = { type: "json_object" };
+        if (maxTokens) payload.max_tokens = maxTokens * (attempt + 1);
+        const response = await fetch(apiUrl, { method: "POST", headers, body: JSON.stringify(payload) });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error?.message || `APIエラー（${response.status}）`);
+        const choice = result.choices?.[0];
+        const content = choice?.message?.content;
+        const text = Array.isArray(content) ? content.map(part => part.text || "").join("") : content;
+        if (text && choice?.finish_reason !== "length") return text;
+        finishReason = choice?.finish_reason || finishReason;
+      }
+      throw new Error(`APIから本文を取得できませんでした（終了理由: ${finishReason}）。モデル名と応答形式を確認してください。`);
+    }
+
+    function sameGlyph(first, second) {
+      const normalize = character => [...character].map(value => {
+        const code = value.charCodeAt(0);
+        if (code >= 0xff01 && code <= 0xff5e) return String.fromCharCode(code - 0xfee0);
+        if (code >= 0x3041 && code <= 0x3096) return String.fromCharCode(code + 0x60);
+        return value;
+      }).join("");
+      return normalize(first) === normalize(second);
+    }
+
+    function startsWithGlyphs(text, prefix) {
+      const textCharacters = graphemes(text);
+      const prefixCharacters = graphemes(prefix);
+      return prefixCharacters.every((character, index) => sameGlyph(textCharacters[index] || "", character));
+    }
+
+    function requiredBodyPrefix() {
+      const left = activePhraseCharacters(leftInput, leftEnabledInput);
+      const right = activePhraseCharacters(rightInput, rightEnabledInput);
+      const rowTotal = Math.max(left.length, right.length);
+      const displayedLeft = displayedEdgePhrase(left, leftDirectionInput.value, rowTotal);
+      const firstRightEdge = edgeCharacterAt(right, rightDirectionInput.value, 0, rowTotal);
+      const prefix = displayedLeft.slice(1);
+      if (prefix.length && firstRightEdge && sameGlyph(prefix.at(-1), firstRightEdge)) prefix.pop();
+      return prefix.join("");
+    }
+
+    function removeEmbeddedAcrostics(text) {
+      const lines = text.split(/\r?\n/u).map(line => line.trim()).filter(Boolean);
+      const left = activePhraseCharacters(leftInput, leftEnabledInput);
+      const right = activePhraseCharacters(rightInput, rightEnabledInput);
+      let body = text.trim();
+
+      if (lines.length > 1) {
+        const rowTotal = Math.max(left.length, right.length, lines.length);
+        body = lines.map((line, index) => {
+          const characters = graphemes(line);
+          const rightEdge = edgeCharacterAt(right, rightDirectionInput.value, index, rowTotal);
+          const leftEdge = edgeCharacterAt(left, leftDirectionInput.value, index, rowTotal);
+          while (leftEdge && characters.length && sameGlyph(characters[0], leftEdge)) characters.shift();
+          while (rightEdge && characters.length && sameGlyph(characters.at(-1), rightEdge)) characters.pop();
+          const nextLeftEdge = edgeCharacterAt(left, leftDirectionInput.value, index + 1, rowTotal);
+          if (rightEdge && nextLeftEdge && characters.length >= 2 && sameGlyph(characters.at(-2), rightEdge) && sameGlyph(characters.at(-1), nextLeftEdge)) {
+            characters.splice(-2);
+          }
+          return characters.join("").trim();
+        }).join("\n");
+      }
+
+      const characters = graphemes(body);
+      const firstLeftEdge = edgeCharacterAt(left, leftDirectionInput.value, 0, Math.max(left.length, right.length));
+      if (firstLeftEdge && characters.length && sameGlyph(characters[0], firstLeftEdge)) characters.shift();
+      const fullwidthWidth = Number(widthInput.value);
+      for (let attempt = 0; attempt < 2 && right.length && characters.length; attempt += 1) {
+        const rows = layoutRows(left, right, characters.join(""), fullwidthWidth * 2);
+        const lastOccupiedRow = rows.findLast(row => row.center.replace(/[・ ]+$/u, ""));
+        const edge = lastOccupiedRow?.right || "";
+        const finalCharacter = characters.at(-1);
+        const isPunctuation = character => /[。．！？!?.,、，;；:：…]/u.test(character);
+        if (edge && (sameGlyph(finalCharacter, edge) || (isPunctuation(edge) && isPunctuation(finalCharacter)))) {
+          characters.pop();
+        } else {
+          break;
+        }
+      }
+      return characters.join("").trim();
+    }
+
+    function renderedDraftRows(text) {
+      const fullwidthWidth = Number(widthInput.value);
+      if (!Number.isInteger(fullwidthWidth) || fullwidthWidth < 4 || fullwidthWidth > 120) {
+        throw new Error("幅は4〜120全角文字で指定してください。");
+      }
+      const left = activePhraseCharacters(leftInput, leftEnabledInput);
+      const right = activePhraseCharacters(rightInput, rightEnabledInput);
+      const body = graphemes(text.replace(/[\s\u3000]/gu, ""));
+      return layoutRows(left, right, text, fullwidthWidth * 2).flatMap((row, index) => {
+        const center = row.center.replace(/[・ ]+$/u, "");
+        return center ? [`${index + 1}行目: ${row.left}${center}${row.right}`] : [];
+      });
+    }
+
+    function fusionIssues(text) {
+      const left = activePhraseCharacters(leftInput, leftEnabledInput);
+      const right = activePhraseCharacters(rightInput, rightEnabledInput);
+      const fullwidthWidth = Number(widthInput.value);
+      const rows = layoutRows(left, right, text, fullwidthWidth * 2);
+      const occupiedLines = text.split(/\r?\n/u).filter(line => line.trim());
+      const issues = [];
+      if (occupiedLines.length > bodyRowLimit()) issues.push(`本文は${bodyRowLimit()}行以内にしてください。`);
+
+      rows.forEach((row, index) => {
+        const center = row.center.replace(/[・ ]+$/u, "");
+        if (!center || !row.right) return;
+        const finalCharacter = graphemes(center).at(-1) || "";
+        const requiredStart = row.left === "Ｅ" ? "は" : row.left === "Ｂ" && row.right === "ゴ" ? "が" : "";
+        if (requiredStart && !center.startsWith(requiredStart)) {
+          issues.push(`${index + 1}行目は左端「${row.left}」の後を「${requiredStart}」で始めて、横読みを自然につないでください。`);
+        }
+        const requiredTail = { "イ": ["スゴ", "オモシロ", "タノシ", "スバラシ"], "ゴ": ["ロ"], "ス": ["ボーナ", "プラ", "チャン"] }[row.right];
+        if (requiredTail && !requiredTail.some(tail => center.endsWith(tail))) {
+          issues.push(`${index + 1}行目の本文末尾を${requiredTail.map(tail => `「${tail}」`).join("または")}にして、右端「${row.right}」と語を完成させてください。`);
+        }
+        const isPunctuation = character => /[。．！？!?.,、，;；:：…]/u.test(character);
+        if (isPunctuation(finalCharacter) && !isPunctuation(row.right)) {
+          issues.push(`${index + 1}行目は本文の句読点「${finalCharacter}」の後に右端文字「${row.right}」が続いています。`);
+        }
+      });
+      return issues;
+    }
+
+    async function repairGeneratedBody(apiUrl, model, apiKey, body, request, note) {
+      const context = {
+        request,
+        leftAcrosticTopToBottom: displayedEdgePhrase(activePhraseCharacters(leftInput, leftEnabledInput), leftDirectionInput.value, Math.max(activePhraseCharacters(leftInput, leftEnabledInput).length, activePhraseCharacters(rightInput, rightEnabledInput).length)).join(""),
+        leftEnabled: leftEnabledInput.checked,
+        leftDirection: leftDirectionInput.value,
+        requiredBodyPrefix: requiredBodyPrefix(),
+        rightAcrosticTopToBottom: displayedEdgePhrase(activePhraseCharacters(rightInput, rightEnabledInput), rightDirectionInput.value, Math.max(activePhraseCharacters(leftInput, leftEnabledInput).length, activePhraseCharacters(rightInput, rightEnabledInput).length)).join(""),
+        rightEnabled: rightEnabledInput.checked,
+        rightDirection: rightDirectionInput.value,
+        maxBodyRows: bodyRowLimit(),
+        currentBody: body,
+        displayedHorizontalRows: renderedDraftRows(body),
+        fusionIssues: fusionIssues(body),
+        reviewNote: note
+      };
+      const content = await requestOllama(apiUrl, model, apiKey, [
+        { role: "system", content: "あなたは日本語の文章を修正する校閲者です。本文はmaxBodyRows行以内に保ち、行ごとの改行を維持してください。表示された各行を端文字込みで横読みして自然な句に直し、本文の冒頭はrequiredBodyPrefixと完全一致させます。fusionIssuesを必ず解消してください。右端イの行は本文末尾スゴ＋イでスゴイ、右端ゴの行は本文末尾ロ＋ゴでロゴを作り、次行の左端はで「ロゴは」と続けます。Ｂの行は「Ｂが」で始めてください。右端スの行は本文末尾ボーナ＋スでボーナスを作ります。本文だけをJSON {\"body\":\"...\"} で返してください。" },
+        { role: "user", content: JSON.stringify(context) }
+      ], true, 1200);
+      let result;
+      try { result = JSON.parse(content); } catch { throw new Error("本文の修正結果を読み取れませんでした。"); }
+      const repaired = typeof result.body === "string" ? removeEmbeddedAcrostics(result.body) : "";
+      if (!repaired) {
+        const error = new Error("縦読みとの不自然な接続を修正できませんでした。依頼文を具体化して再生成してください。");
+        error.unverifiedBody = body;
+        throw error;
+      }
+      return repaired;
+    }
+
+    async function verifyGeneratedBody(apiUrl, model, apiKey, originalBody, request) {
+      let body = removeEmbeddedAcrostics(originalBody);
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        const context = {
+          request,
+          leftAcrosticTopToBottom: displayedEdgePhrase(activePhraseCharacters(leftInput, leftEnabledInput), leftDirectionInput.value, Math.max(activePhraseCharacters(leftInput, leftEnabledInput).length, activePhraseCharacters(rightInput, rightEnabledInput).length)).join(""),
+          leftEnabled: leftEnabledInput.checked,
+          leftDirection: leftDirectionInput.value,
+          requiredBodyPrefix: requiredBodyPrefix(),
+          rightAcrosticTopToBottom: displayedEdgePhrase(activePhraseCharacters(rightInput, rightEnabledInput), rightDirectionInput.value, Math.max(activePhraseCharacters(leftInput, leftEnabledInput).length, activePhraseCharacters(rightInput, rightEnabledInput).length)).join(""),
+          rightEnabled: rightEnabledInput.checked,
+          rightDirection: rightDirectionInput.value,
+          draftBody: body,
+          maxBodyRows: bodyRowLimit(),
+          displayedHorizontalRows: renderedDraftRows(body),
+          fusionIssues: fusionIssues(body),
+          emptyFramingRowsAreIntentional: true
+        };
+        const content = await requestOllama(apiUrl, model, apiKey, [
+          { role: "system", content: "あなたは厳密な日本語組版校閲者です。提示された本文のある横行だけを、左端文字・本文・右端文字の順に読んで検証します。本文のない行は意図的な枠なので対象外です。各行が自然な日本語の句になり、行間もつながるか確認してください。本文の句読点の直後に句読点以外の右端文字が来る行は必ず不合格です。fusionIssuesがあれば不合格です。本文はmaxBodyRows行以内、冒頭はrequiredBodyPrefixで始めます。理由や修正文は不要です。JSON {\"ok\":true} または {\"ok\":false} のみ返してください。" },
+          { role: "user", content: JSON.stringify(context) }
+        ], true, 1200);
+        let result;
+        try { result = JSON.parse(content); } catch { throw new Error("文章の検証結果を読み取れませんでした。"); }
+        const checkedBody = body;
+        const requiredPrefix = requiredBodyPrefix();
+        const prefixIsValid = !requiredPrefix || startsWithGlyphs(checkedBody, requiredPrefix);
+        const issues = checkedBody ? fusionIssues(checkedBody) : ["検証結果に本文がありません。"];
+        if (!prefixIsValid) issues.push(`本文の冒頭は「${requiredPrefix}」で始めてください。`);
+        if (result.ok === true && checkedBody && prefixIsValid && issues.length === 0) return checkedBody;
+        if (attempt === 2) {
+          const error = new Error(issues.join(" ") || "修正後も横読みが自然でないと判定されました。依頼文を具体化して再生成してください。");
+          error.unverifiedBody = body;
+          throw error;
+        }
+        status.textContent = "接続の不自然な箇所を修正しています。";
+        body = await repairGeneratedBody(apiUrl, model, apiKey, body, request, issues.join(" ") || "縦読みの端文字と本文のつながりが不自然です。");
+      }
+      throw new Error("本文の検証に失敗しました。");
+    }
+
+    document.querySelector("#generateButton").addEventListener("click", async event => {
+      const button = event.currentTarget;
+      const apiKey = document.querySelector("#apiKey").value.trim();
+      const apiUrl = document.querySelector("#apiUrl").value.trim();
+      const model = document.querySelector("#model").value.trim();
+      const request = document.querySelector("#prompt").value.trim();
+      if (!apiUrl || !model || !request) {
+        setError(new Error("API URL・モデル名・依頼文を入力してください。"));
+        return;
+      }
+
+      button.disabled = true;
+      button.textContent = "生成中...";
+      status.classList.remove("error");
+      status.textContent = "LLMに本文を依頼しています。";
+      let operation = "LLMへの接続";
+      try {
+        const leftCharacters = activePhraseCharacters(leftInput, leftEnabledInput);
+        const rightCharacters = activePhraseCharacters(rightInput, rightEnabledInput);
+        const left = leftCharacters.join("");
+        const right = rightCharacters.join("");
+        if (!left && !right) throw new Error("左右どちらかの縦読みを入力してください。");
+        const fullwidthWidth = Number(widthInput.value);
+        if (!Number.isInteger(fullwidthWidth) || fullwidthWidth < 4 || fullwidthWidth > 120) {
+          throw new Error("幅は4〜120全角文字で指定してください。");
+        }
+        const edgeRowCount = Math.max(leftCharacters.length, rightCharacters.length);
+        const lineCount = bodyRowLimit();
+        const requiredPrefix = requiredBodyPrefix();
+        const rowSpecs = Array.from({ length: lineCount }, (_, index) => {
+          const rightEdge = edgeCharacterAt(rightCharacters, rightDirectionInput.value, index, edgeRowCount);
+          const leftEdge = edgeCharacterAt(leftCharacters, leftDirectionInput.value, index, edgeRowCount);
+          const available = fullwidthWidth * 2 - (leftEdge ? columns(leftEdge) : 0) - (rightEdge ? columns(rightEdge) : 0);
+          return {
+            row: index + 1,
+            leftEdge,
+            requiredStartAfterLeftEdge: leftEdge === "Ｅ" ? "は" : leftEdge === "Ｂ" && rightEdge === "ゴ" ? "が" : "",
+            rightEdge,
+            rightEdgeJoinHint: rightEdgeJoinHint(rightEdge),
+            maxHalfwidthColumns: available,
+            approximateMaxFullwidthCharacters: Math.floor(available / 2)
+          };
+        });
+        const generationContext = JSON.stringify({ request, leftAcrosticTopToBottom: displayedEdgePhrase(leftCharacters, leftDirectionInput.value, edgeRowCount).join(""), rightAcrosticTopToBottom: displayedEdgePhrase(rightCharacters, rightDirectionInput.value, edgeRowCount).join(""), requiredFirstLinePrefix: requiredPrefix, rowSpecs });
+        operation = "行別本文の生成";
+        const generatedContent = await requestOllama(apiUrl, model, apiKey, [
+          { role: "system", content: "あなたは日本語の文章作家です。全rowSpecに対して本文行を1つずつ作ります。実際に表示されるleftEdge + line + rightEdgeを読み、leftEdgeの後はrequiredStartAfterLeftEdgeで指定された語から始め、rightEdgeJoinHintの語尾を必ず完成させてください。右端イの行は本文末尾スゴ＋イでスゴイ、右端ゴの行は本文末尾ロ＋ゴでロゴを作り、次行の左端はに続けて「ロゴは」とします。Ｂの行は「Ｂが」で始めてください。右端スの行は本文末尾ボーナ＋スでボーナスを作ります。各行単独で自然な日本語になり、隣の行にも意味がつながること。端文字は本文に重複させず、最初の本文行はrequiredFirstLinePrefixで始めます。各行はmaxHalfwidthColumns以内です。JSON {\"lines\":[本文行,...]} だけを返してください。" },
+          { role: "user", content: generationContext }
+        ], true, 1800);
+        let generatedResult;
+        try { generatedResult = JSON.parse(generatedContent); } catch { throw new Error("LLMの行別本文を読み取れませんでした。"); }
+        if (!Array.isArray(generatedResult.lines) || generatedResult.lines.length !== lineCount || generatedResult.lines.some(line => typeof line !== "string" || !line.trim())) {
+          throw new Error("LLMが必要な行数の本文を返しませんでした。もう一度生成してください。");
+        }
+        const generated = generatedResult.lines.map(line => line.trim()).join("\n");
+        status.textContent = "左右の縦読みとのつながりを検証しています。";
+        operation = "生成本文の検証";
+        const verifiedBody = await verifyGeneratedBody(apiUrl, model, apiKey, generated, request);
+        bodyInput.value = verifiedBody;
+        format();
+        status.textContent = verifiedBody === generated.trim()
+          ? "本文を検証して組版しました。"
+          : "縦読みとのつながりを修正・検証して組版しました。";
+      } catch (error) {
+        if (typeof error.unverifiedBody === "string") {
+          bodyInput.value = error.unverifiedBody;
+          try { format(); } catch {}
+          error.message = `未検証の候補を表示しています。${error.message}`;
+        }
+        setError(new Error(error instanceof TypeError ? `${operation}に失敗しました。${error.message}` : error.message));
+      } finally {
+        button.disabled = false;
+        button.textContent = "LLMで本文を作る";
+      }
+    });
+
+    document.querySelector("#copyButton").addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(output.textContent);
+        status.textContent = "組版結果をコピーしました。";
+        status.classList.remove("error");
+      } catch {
+        setError(new Error("コピーできませんでした。ブラウザーの権限を確認してください。"));
+      }
+    });
+
+    document.querySelector("#downloadButton").addEventListener("click", () => {
+      const blob = new Blob([output.textContent], { type: "text/plain;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "あとがき.txt";
+      link.click();
+      URL.revokeObjectURL(url);
+    });
+
+    format();
+  </script>
+</body>
+</html>
